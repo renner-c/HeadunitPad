@@ -13,19 +13,33 @@ final class NowPlayingCoordinator {
     private var keepAlivePlayer: AVQueuePlayer?
     private var keepAliveItem: AVPlayerItem?
     private var keepAliveLooper: AVPlayerLooper?
-    private var nowPlayingSession: MPNowPlayingSession?
+    /// An `MPNowPlayingSession` on iOS 16+, always nil before that. Stored type-erased because
+    /// stored properties cannot carry an availability attribute.
+    private var nowPlayingSessionStorage: AnyObject?
     private var configuredCommandCenter: MPRemoteCommandCenter?
     private var lastPublishedIsPlaying: Bool?
     private var hasConfiguredAudioSession = false
 
     private init() {}
 
+    @available(iOS 16.0, *)
+    private var nowPlayingSession: MPNowPlayingSession? {
+        get { nowPlayingSessionStorage as? MPNowPlayingSession }
+        set { nowPlayingSessionStorage = newValue }
+    }
+
     private var activeInfoCenter: MPNowPlayingInfoCenter {
-        nowPlayingSession?.nowPlayingInfoCenter ?? MPNowPlayingInfoCenter.default()
+        if #available(iOS 16.0, *), let session = nowPlayingSession {
+            return session.nowPlayingInfoCenter
+        }
+        return MPNowPlayingInfoCenter.default()
     }
 
     private var activeCommandCenter: MPRemoteCommandCenter {
-        nowPlayingSession?.remoteCommandCenter ?? MPRemoteCommandCenter.shared()
+        if #available(iOS 16.0, *), let session = nowPlayingSession {
+            return session.remoteCommandCenter
+        }
+        return MPRemoteCommandCenter.shared()
     }
 
     func activate() {
@@ -58,7 +72,7 @@ final class NowPlayingCoordinator {
             self.clearRemoteCommands()
             self.activeInfoCenter.nowPlayingInfo = nil
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-            self.nowPlayingSession = nil
+            self.nowPlayingSessionStorage = nil
             UIApplication.shared.endReceivingRemoteControlEvents()
             print("NowPlayingCoordinator: deactivated")
         }
@@ -102,14 +116,24 @@ final class NowPlayingCoordinator {
             player.volume = 0.0001
             keepAliveItem = item
             keepAlivePlayer = player
-            item.nowPlayingInfo = makeNowPlayingInfo(metadata: metadata, playbackState: playbackState)
+            setNowPlayingInfo(makeNowPlayingInfo(metadata: metadata, playbackState: playbackState), on: item)
             keepAliveLooper = AVPlayerLooper(player: player, templateItem: item)
-            configureNowPlayingSession(for: player)
+            if #available(iOS 16.0, *) {
+                configureNowPlayingSession(for: player)
+            }
         }
 
         player.playImmediately(atRate: 1.0)
     }
 
+    /// `AVPlayerItem.nowPlayingInfo` is iOS 16+. Before that, the info center alone carries the metadata.
+    private func setNowPlayingInfo(_ info: [String: Any]?, on item: AVPlayerItem?) {
+        if #available(iOS 16.0, *) {
+            item?.nowPlayingInfo = info
+        }
+    }
+
+    @available(iOS 16.0, *)
     private func configureNowPlayingSession(for player: AVPlayer) {
         let session = MPNowPlayingSession(players: [player])
         session.automaticallyPublishesNowPlayingInfo = false
@@ -134,14 +158,16 @@ final class NowPlayingCoordinator {
     }
 
     private func tearDownSilentPlayback() {
-        nowPlayingSession?.nowPlayingInfoCenter.nowPlayingInfo = nil
+        if #available(iOS 16.0, *) {
+            nowPlayingSession?.nowPlayingInfoCenter.nowPlayingInfo = nil
+        }
         keepAlivePlayer?.pause()
         keepAlivePlayer?.removeAllItems()
         keepAliveLooper?.disableLooping()
         keepAliveLooper = nil
         keepAlivePlayer = nil
         keepAliveItem = nil
-        nowPlayingSession = nil
+        nowPlayingSessionStorage = nil
     }
 
     private func pauseSilentPlayback() {
@@ -314,8 +340,8 @@ final class NowPlayingCoordinator {
         if forceRepublish || lastPublishedIsPlaying != playbackState.isPlaying {
             activeInfoCenter.nowPlayingInfo = nil
         }
-        keepAliveItem?.nowPlayingInfo = info
-        keepAlivePlayer?.currentItem?.nowPlayingInfo = info
+        setNowPlayingInfo(info, on: keepAliveItem)
+        setNowPlayingInfo(info, on: keepAlivePlayer?.currentItem)
         activeInfoCenter.nowPlayingInfo = info
         lastPublishedIsPlaying = playbackState.isPlaying
     }

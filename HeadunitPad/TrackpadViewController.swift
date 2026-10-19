@@ -21,14 +21,7 @@ final class TrackpadViewController: UIViewController {
     }()
 
     private lazy var settingsButton: UIButton = {
-        var config = UIButton.Configuration.plain()
-        config.image = UIImage(systemName: "slider.horizontal.3")
-        config.baseForegroundColor = .white
-        config.baseBackgroundColor = UIColor.black.withAlphaComponent(0.35)
-        config.cornerStyle = .capsule
-        config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10)
-
-        let button = UIButton(configuration: config)
+        let button = HeadunitButton(style: .overlay, systemImageName: "slider.horizontal.3")
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(showSettingsMenu), for: .touchUpInside)
         return button

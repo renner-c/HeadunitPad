@@ -71,14 +71,7 @@ class MainViewController: UIViewController {
     }()
 
     private lazy var connectButton: UIButton = {
-        var config = UIButton.Configuration.filled()
-        config.title = "Wireless: Scan for Devices"
-        config.image = UIImage(systemName: "wifi")
-        config.imagePadding = 8
-        config.cornerStyle = .large
-        config.buttonSize = .large
-
-        let button = UIButton(configuration: config)
+        let button = HeadunitButton(style: .filled, size: .large, title: "Wireless: Scan for Devices", systemImageName: "wifi")
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(connectButtonTapped), for: .touchUpInside)
         return button
@@ -92,14 +85,7 @@ class MainViewController: UIViewController {
     }()
 
     private lazy var settingsButton: UIButton = {
-        var config = UIButton.Configuration.plain()
-        config.image = UIImage(systemName: "gearshape.fill")
-        config.baseForegroundColor = .white
-        config.baseBackgroundColor = UIColor.black.withAlphaComponent(0.35)
-        config.cornerStyle = .capsule
-        config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10)
-
-        let button = UIButton(configuration: config)
+        let button = HeadunitButton(style: .overlay, systemImageName: "gearshape.fill")
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(settingsButtonTapped), for: .touchUpInside)
         button.isHidden = true
@@ -107,39 +93,21 @@ class MainViewController: UIViewController {
     }()
 
     private lazy var manualIPButton: UIButton = {
-        var config = UIButton.Configuration.tinted()
-        config.title = "Wireless: Enter IP Manually"
-        config.image = UIImage(systemName: "keyboard")
-        config.imagePadding = 8
-        config.cornerStyle = .medium
-
-        let button = UIButton(configuration: config)
+        let button = HeadunitButton(style: .tinted, title: "Wireless: Enter IP Manually", systemImageName: "keyboard")
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(manualIPButtonTapped), for: .touchUpInside)
         return button
     }()
 
     private lazy var usbProbeButton: UIButton = {
-        var config = UIButton.Configuration.tinted()
-        config.title = Self.wiredConnectTitle
-        config.image = UIImage(systemName: "cable.connector")
-        config.imagePadding = 8
-        config.cornerStyle = .medium
-
-        let button = UIButton(configuration: config)
+        let button = HeadunitButton(style: .tinted, title: Self.wiredConnectTitle, systemImageName: "cable.connector")
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(usbProbeButtonTapped), for: .touchUpInside)
         return button
     }()
 
     private lazy var disconnectButton: UIButton = {
-        var config = UIButton.Configuration.filled()
-        config.title = "Disconnect"
-        config.cornerStyle = .large
-        config.buttonSize = .large
-        config.baseBackgroundColor = .systemRed
-
-        let button = UIButton(configuration: config)
+        let button = HeadunitButton(style: .filled, size: .large, title: "Disconnect", accent: .systemRed)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(disconnectButtonTapped), for: .touchUpInside)
         button.isHidden = true
@@ -194,11 +162,11 @@ class MainViewController: UIViewController {
     }
 
     private func applyOrientationLock() {
-        setNeedsUpdateOfSupportedInterfaceOrientations()
         touchOverlayView.isMultipleTouchEnabled = true
 
         let targetMask = supportedInterfaceOrientations
         if #available(iOS 16.0, *) {
+            setNeedsUpdateOfSupportedInterfaceOrientations()
             guard let scene = view.window?.windowScene else { return }
             let prefs = UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: targetMask)
             scene.requestGeometryUpdate(prefs) { error in
@@ -473,7 +441,7 @@ class MainViewController: UIViewController {
         case .directHeadunit:
             title = "Wireless: Scan Headunit"
         }
-        connectButton.configuration?.title = title
+        connectButton.setTitle(title, for: .normal)
     }
 
     private func startVideoWatchdog() {
@@ -838,9 +806,9 @@ class MainViewController: UIViewController {
     private func updateUSBProbeUI(_ state: USBProbeState) {
         switch state {
         case .idle:
-            usbProbeButton.configuration?.title = Self.wiredConnectTitle
+            usbProbeButton.setTitle(Self.wiredConnectTitle, for: .normal)
         case .running(let status):
-            usbProbeButton.configuration?.title = "Cancel Wired Connection"
+            usbProbeButton.setTitle("Cancel Wired Connection", for: .normal)
             connectButton.isEnabled = false
             manualIPButton.isEnabled = false
             statusLabel.text = status
@@ -859,7 +827,7 @@ class MainViewController: UIViewController {
     }
 
     private func finishUSBProbeUI(status: String, color: UIColor) {
-        usbProbeButton.configuration?.title = Self.wiredConnectTitle
+        usbProbeButton.setTitle(Self.wiredConnectTitle, for: .normal)
         connectButton.isEnabled = true
         manualIPButton.isEnabled = true
         statusLabel.text = status
