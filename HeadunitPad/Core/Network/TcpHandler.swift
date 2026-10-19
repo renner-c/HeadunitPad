@@ -90,6 +90,7 @@ nonisolated class TcpHandler: ByteStreamConnection, @unchecked Sendable {
             guard let self = self else { return }
 
             print("TcpHandler: connection state changed to: \(String(describing: state))")
+            DiagnosticsLog.shared.log("net", "TCP \(host):\(port) state \(Self.stateName(state))")
 
             switch state {
             case .setup:
@@ -109,6 +110,7 @@ nonisolated class TcpHandler: ByteStreamConnection, @unchecked Sendable {
 
             case .failed(let error):
                 print("TcpHandler: state = failed, error=\(error)")
+                DiagnosticsLog.shared.log("error", "TCP \(host):\(port) failed: \(DiagnosticsLog.describe(error))")
                 self.connectionTimer?.cancel()
                 self.isConnected = false
                 DispatchQueue.main.async {
@@ -125,10 +127,23 @@ nonisolated class TcpHandler: ByteStreamConnection, @unchecked Sendable {
 
             case .waiting(let error):
                 print("TcpHandler: state = waiting, error=\(error)")
+                DiagnosticsLog.shared.log("error", "TCP \(host):\(port) waiting (no route yet; a denied Local Network permission also looks like this): \(DiagnosticsLog.describe(error))")
 
             @unknown default:
                 print("TcpHandler: state = unknown")
             }
+        }
+    }
+
+    private static func stateName(_ state: NWConnection.State) -> String {
+        switch state {
+        case .setup: return "setup"
+        case .waiting: return "waiting"
+        case .preparing: return "preparing"
+        case .ready: return "ready"
+        case .failed: return "failed"
+        case .cancelled: return "cancelled"
+        @unknown default: return "unknown"
         }
     }
 
@@ -137,6 +152,7 @@ nonisolated class TcpHandler: ByteStreamConnection, @unchecked Sendable {
             guard let self = self else { return }
             if !self.isConnected {
                 print("TcpHandler: Connection timeout after \(self.connectionTimeout)s")
+                DiagnosticsLog.shared.log("error", "TCP connection timed out after \(Int(self.connectionTimeout))s")
                 DispatchQueue.main.async {
                     self.delegate?.byteStreamConnection(self, didDisconnect: TcpHandlerError.timeout)
                 }
@@ -166,6 +182,7 @@ nonisolated class TcpHandler: ByteStreamConnection, @unchecked Sendable {
         connection.send(content: data, completion: .contentProcessed { error in
             if let error = error {
                 print("TcpHandler: send error: \(error)")
+                DiagnosticsLog.shared.log("error", "TCP send failed: \(DiagnosticsLog.describe(error))")
             }
             completion?(error)
         })
@@ -183,12 +200,14 @@ nonisolated class TcpHandler: ByteStreamConnection, @unchecked Sendable {
 
             if let error = error {
                 print("TcpHandler: receive error: \(error)")
+                DiagnosticsLog.shared.log("error", "TCP receive failed: \(DiagnosticsLog.describe(error))")
                 self.disconnect()
                 return
             }
 
             if isComplete {
                 print("TcpHandler: connection complete")
+                DiagnosticsLog.shared.log("net", "TCP peer closed the connection")
                 self.disconnect()
                 return
             }

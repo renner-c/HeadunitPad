@@ -91,6 +91,8 @@ nonisolated final class USBAccessoryConnection: ByteStreamConnection, @unchecked
     private let staleDrainBudgetMilliseconds: UInt64
     private var staleBytesDrained = 0
     private var staleDrainHitBudget = false
+    private var bytesRead = 0
+    private var bytesWritten = 0
 
     var drainedStaleBytes: Int {
         withLock { staleBytesDrained }
@@ -151,15 +153,23 @@ nonisolated final class USBAccessoryConnection: ByteStreamConnection, @unchecked
             throw USBAccessoryConnectionError.alreadyConnected
         }
 
+        let endpoints = "bulk IN \(String(format: "0x%02X", inputEndpoint)), OUT \(String(format: "0x%02X", outputEndpoint))"
+        DiagnosticsLog.shared.log("usb", "claiming interface \(interfaceNumber) (\(endpoints))")
         do {
             try await session.claimInterface(interfaceNumber)
         } catch {
+            DiagnosticsLog.shared.log("usb", "interface \(interfaceNumber) claim FAILED: \(DiagnosticsLog.describe(error))")
             withLock { state = .disconnected }
             await session.close()
             throw error
         }
+        DiagnosticsLog.shared.log("usb", "interface \(interfaceNumber) claimed")
 
         await drainStaleInput()
+        DiagnosticsLog.shared.log(
+            "usb",
+            "stale input drain finished: \(drainedStaleBytes) byte(s) discarded, budget exhausted: \(staleDrainRanOutOfBudget ? "yes" : "no")"
+        )
 
         let didConnect = withLock { () -> Bool in
             guard state == .connecting, !Task.isCancelled else { return false }
@@ -173,10 +183,12 @@ nonisolated final class USBAccessoryConnection: ByteStreamConnection, @unchecked
             return true
         }
         guard didConnect else {
+            DiagnosticsLog.shared.log("usb", "connect cancelled after claim; releasing interface \(interfaceNumber)")
             try? await session.releaseInterface(interfaceNumber)
             await session.close()
             throw CancellationError()
         }
+        DiagnosticsLog.shared.log("usb", "bulk read loop started")
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
@@ -260,6 +272,16 @@ nonisolated final class USBAccessoryConnection: ByteStreamConnection, @unchecked
                     timeoutMilliseconds: readTimeoutMilliseconds
                 )
                 if !result.data.isEmpty {
+                    let isFirstRead = withLock { () -> Bool in
+                        defer { bytesRead += result.data.count }
+                        return bytesRead == 0
+                    }
+                    if isFirstRead {
+                        DiagnosticsLog.shared.log(
+                            "usb",
+                            "first bulk read: \(result.data.count) byte(s)\(result.recoveredFromTimeout ? " (recovered from timeout)" : "")"
+                        )
+                    }
                     delegate?.byteStreamConnection(self, didReceive: result.data)
                 }
             } catch USBHostError.timeout {
@@ -292,6 +314,13 @@ nonisolated final class USBAccessoryConnection: ByteStreamConnection, @unchecked
                     data: pending.data,
                     timeoutMilliseconds: writeTimeoutMilliseconds
                 )
+                let isFirstWrite = withLock { () -> Bool in
+                    defer { bytesWritten += pending.data.count }
+                    return bytesWritten == 0
+                }
+                if isFirstWrite {
+                    DiagnosticsLog.shared.log("usb", "first bulk write: \(pending.data.count) byte(s)")
+                }
                 pending.completion?(nil)
             } catch {
                 pending.completion?(error)
@@ -309,6 +338,11 @@ nonisolated final class USBAccessoryConnection: ByteStreamConnection, @unchecked
         }
         guard let tasks else { return }
 
+        let totals = withLock { (bytesRead, bytesWritten) }
+        DiagnosticsLog.shared.log(
+            "usb",
+            "disconnecting (\(error.map { DiagnosticsLog.describe($0) } ?? "requested")); bulk bytes read \(totals.0), written \(totals.1)"
+        )
         tasks.read?.cancel()
         tasks.write?.cancel()
         Task { [weak self] in
@@ -330,9 +364,15 @@ nonisolated final class USBAccessoryConnection: ByteStreamConnection, @unchecked
         }
 
         if cleanup.0 {
-            try? await session.releaseInterface(interfaceNumber)
+            do {
+                try await session.releaseInterface(interfaceNumber)
+                DiagnosticsLog.shared.log("usb", "interface \(interfaceNumber) released")
+            } catch {
+                DiagnosticsLog.shared.log("usb", "interface \(interfaceNumber) release failed: \(DiagnosticsLog.describe(error))")
+            }
         }
         await session.close()
+        DiagnosticsLog.shared.log("usb", "USB session closed")
 
         withLock { state = .disconnected }
 

@@ -234,7 +234,7 @@ nonisolated extension DiagnosticsLog {
                 parts.append("dns error \(code)")
             case .tls(let status):
                 parts.append("tls OSStatus \(status)")
-            @unknown default:
+            default:
                 break
             }
         }

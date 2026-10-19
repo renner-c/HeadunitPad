@@ -100,6 +100,7 @@ class Discovery {
     private func performSubnetScan() {
         guard let networkInfo = getWiFiNetworkInfo() else {
             print("Discovery: Could not find WiFi network info")
+            DiagnosticsLog.shared.log("error", "scan aborted: no usable en0/en1 IPv4 address (Wi-Fi off, or only a link-local 169.254 address)")
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.delegate?.discoveryDidFail(DiscoveryError.noNetworkInterface)
@@ -108,8 +109,13 @@ class Discovery {
         }
 
         print("Discovery: Using local IP \(networkInfo.ip) on subnet \(networkInfo.subnet)")
+        DiagnosticsLog.shared.log(
+            "net",
+            "scan start: local IP \(networkInfo.ip), subnet \(networkInfo.subnet).0/24, ports \(targetPorts.map(String.init).joined(separator: ","))"
+        )
 
         let group = DispatchGroup()
+        let tally = ScanTally()
 
         for i in 1...254 {
             let ip = "\(networkInfo.subnet).\(i)"
@@ -119,8 +125,11 @@ class Discovery {
             }
 
             group.enter()
+            tally.recordTried()
             checkHost(ip: ip) { [weak self] success, foundIP, foundPort in
                 if success, let foundIP = foundIP, let foundPort = foundPort {
+                    tally.recordResponded()
+                    DiagnosticsLog.shared.log("net", "scan: \(foundIP):\(foundPort) accepted a TCP connection")
                     let name = foundPort == Discovery.launcherPort ? "Wireless Helper at \(foundIP)" : nil
                     let device = DiscoveredDevice(ip: foundIP, port: foundPort, name: name)
                     DispatchQueue.main.async {
@@ -134,6 +143,7 @@ class Discovery {
         group.notify(queue: queue) { [weak self] in
             self?.isScanning = false
             print("Discovery: Scan complete")
+            DiagnosticsLog.shared.log("net", "scan complete: \(tally.tried) host(s) tried, \(tally.responded) responded")
             DispatchQueue.main.async {
                 self?.delegate?.discoveryDidFinish()
             }
@@ -301,6 +311,20 @@ class Discovery {
         print("Discovery: Could not find WiFi interface (en0/en1)")
         return nil
     }
+}
+
+/// Counts probes from the scan's concurrent callbacks, so the log can say how
+/// many hosts were tried without writing a line per host.
+nonisolated private final class ScanTally: @unchecked Sendable {
+    private let lock = NSLock()
+    private var triedCount = 0
+    private var respondedCount = 0
+
+    var tried: Int { lock.lock(); defer { lock.unlock() }; return triedCount }
+    var responded: Int { lock.lock(); defer { lock.unlock() }; return respondedCount }
+
+    func recordTried() { lock.lock(); triedCount += 1; lock.unlock() }
+    func recordResponded() { lock.lock(); respondedCount += 1; lock.unlock() }
 }
 
 enum DiscoveryError: Error, LocalizedError {

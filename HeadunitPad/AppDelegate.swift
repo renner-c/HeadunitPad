@@ -14,6 +14,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     static let trackpadWindowActivityType = "com.headunitpad.scene.trackpad"
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        let log = DiagnosticsLog.shared
+        log.writeLaunchHeader(
+            DiagnosticsLog.currentLaunchInfo(
+                usbEntitlements: USBHostEntitlements.current().summary,
+                logPath: log.logURL.path
+            )
+        )
         return true
     }
 

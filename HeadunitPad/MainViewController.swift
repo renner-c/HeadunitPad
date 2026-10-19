@@ -22,6 +22,7 @@ class MainViewController: UIViewController {
     private var lastVideoFrameTs: TimeInterval = 0
     private var hasReceivedFirstVideoFrame = false
     private var lastVideoRecoveryTs: TimeInterval = 0
+    private var wasRunning = false
 
     // MARK: - UI Components
 
@@ -123,6 +124,9 @@ class MainViewController: UIViewController {
         connectionManager.delegate = self
         videoRenderer.onFrameDisplayed = { [weak self] in
             guard let self else { return }
+            if !self.hasReceivedFirstVideoFrame {
+                DiagnosticsLog.shared.log("video", "first frame displayed by the renderer")
+            }
             self.hasReceivedFirstVideoFrame = true
             self.lastVideoFrameTs = Date().timeIntervalSince1970
         }
@@ -800,7 +804,28 @@ class MainViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "Copy", style: .default) { [weak self] _ in
             UIPasteboard.general.string = self?.combinedDiagnosticLines().joined(separator: "\n")
         })
+        alert.addAction(UIAlertAction(title: "Share Log File", style: .default) { [weak self] _ in
+            self?.shareDiagnosticsLog()
+        })
         present(alert, animated: true)
+    }
+
+    /// The persistent trail written by DiagnosticsLog, newest file first. It is
+    /// also reachable from the Files app and over SSH; this is the quick route.
+    private func shareDiagnosticsLog() {
+        let log = DiagnosticsLog.shared
+        log.flush()
+        let items: [URL] = [log.logURL, log.rotatedURL]
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+        guard !items.isEmpty else { return }
+
+        let activity = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let popover = activity.popoverPresentationController {
+            popover.sourceView = settingsButton
+            popover.sourceRect = settingsButton.bounds
+            popover.permittedArrowDirections = [.up, .down]
+        }
+        present(activity, animated: true)
     }
 
     private func updateUSBProbeUI(_ state: USBProbeState) {
@@ -841,6 +866,9 @@ class MainViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "Copy Diagnostics", style: .default) { [weak self] _ in
             UIPasteboard.general.string = self?.combinedDiagnosticLines().joined(separator: "\n")
         })
+        alert.addAction(UIAlertAction(title: "Share Log File", style: .default) { [weak self] _ in
+            self?.shareDiagnosticsLog()
+        })
         alert.addAction(UIAlertAction(title: "Close", style: .cancel))
         present(alert, animated: true)
     }
@@ -849,6 +877,7 @@ class MainViewController: UIViewController {
         connectionManager.diagnosticLines()
             + [""]
             + videoRenderer.diagnosticLines()
+            + ["", "Diagnostics log: \(DiagnosticsLog.shared.logURL.path)"]
     }
 
     private func configurePopoverSource(for alert: UIAlertController) {
@@ -915,6 +944,17 @@ class MainViewController: UIViewController {
 
 extension MainViewController: ConnectionManagerDelegate {
     func connectionManager(_ manager: ConnectionManager, didChangeState state: ConnectionState) {
+        if state == .running {
+            wasRunning = true
+        } else if wasRunning {
+            // Snapshot before the .disconnected branch resets the renderer.
+            wasRunning = false
+            DiagnosticsLog.shared.log(
+                "video",
+                "renderer snapshot on leaving running (now \(state.description))\n"
+                    + videoRenderer.diagnosticLines().joined(separator: "\n")
+            )
+        }
         updateUIForConnectionState(state)
     }
 

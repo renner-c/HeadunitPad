@@ -44,7 +44,9 @@ final class DiagnosticsLogTests: XCTestCase {
     }
 
     func testAppendsToExistingFileAcrossInstances() throws {
-        makeLog().log("a", "first")
+        let first = makeLog()
+        first.log("a", "first")
+        first.flush()
         let second = makeLog()
         second.log("a", "second")
         second.flush()

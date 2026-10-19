@@ -275,6 +275,69 @@ nonisolated enum AOAModeSwitchStage: Equatable, Sendable {
     case libusbLog(String)
 }
 
+// MARK: - Diagnostics log text
+
+extension AOAIdentity {
+    nonisolated var logSummary: String {
+        "manufacturer=\(manufacturer) model=\(model) description=\(description) version=\(version) uri=\(uri) serial=\(serial)"
+    }
+}
+
+extension AOAUSBDevice {
+    /// "18D1:4EE2 bus 1 addr 3 interfaces 0[81/02 01/02]" — endpoint address/attributes in hex.
+    nonisolated var logSummary: String {
+        let interfaceText = interfaces.map { interface in
+            let endpoints = interface.endpoints
+                .map { String(format: "%02X/%02X", $0.address, $0.attributes) }
+                .joined(separator: " ")
+            return "\(interface.number)[\(endpoints)]"
+        }.joined(separator: " ")
+        return String(format: "%04X:%04X", vendorID, productID)
+            + " bus \(busNumber) addr \(deviceAddress) interfaces \(interfaceText.isEmpty ? "none" : interfaceText)"
+    }
+}
+
+extension AOAModeSwitchStage {
+    /// What happened at this stage, with the ids and codes a remote reader needs.
+    nonisolated var logDetail: String {
+        switch self {
+        case .searching:
+            return "searching for USB devices"
+        case .devicesFound(let devices):
+            if devices.isEmpty { return "0 USB devices enumerated" }
+            return "\(devices.count) USB device(s): " + devices.map { $0.logSummary }.joined(separator: "; ")
+        case .restartingExistingAccessory(let device):
+            return "device already in accessory mode, restarting it: \(device.logSummary)"
+        case .accessoryDetachObserved:
+            return "device left the USB bus"
+        case .deviceReset(let result):
+            return "device re-enumerate request: \(result)"
+        case .softReconfigure(let result):
+            return "SET_CONFIGURATION request: \(result)"
+        case .negotiating(let device):
+            return "AOA negotiation with \(device.logSummary)"
+        case .protocolVersion(let version):
+            return "GET_PROTOCOL returned version \(version)"
+        case .sendingIdentity:
+            return "sending the six accessory identity strings"
+        case .startingAccessory:
+            return "sending START"
+        case .startCompleted:
+            return "START control transfer completed"
+        case .startDetached:
+            return "device detached while START was in flight (expected)"
+        case .waitingForReenumeration:
+            return "polling for an accessory device (VID 18D1, PID 2D00-2D05)"
+        case .accessoryReady(let result):
+            return "accessory \(result.accessoryDevice.logSummary), claiming interface \(result.interfaceNumber), bulk IN \(String(format: "0x%02X", result.bulkInputEndpoint)) OUT \(String(format: "0x%02X", result.bulkOutputEndpoint))"
+        case .registrySummary(let summary):
+            return "IORegistry USB devices:\n\(summary)"
+        case .libusbLog(let log):
+            return "libusb log:\n\(log)"
+        }
+    }
+}
+
 nonisolated struct AOAProbeDiagnostics: Equatable, Sendable {
     private(set) var status = "Not started"
     private(set) var sourceDevice: AOAUSBDevice?

@@ -44,15 +44,18 @@ final class WirelessHelperServer {
                 case .ready:
                     self.isRunning = true
                     print("WirelessHelperServer: listening on \(Self.port)")
+                    DiagnosticsLog.shared.log("net", "wireless helper listener ready on port \(Self.port), Bonjour \(Self.serviceType)")
                 case .failed(let error):
                     self.isRunning = false
                     print("WirelessHelperServer: failed: \(error)")
+                    DiagnosticsLog.shared.log("error", "wireless helper listener failed: \(DiagnosticsLog.describe(error))")
                     DispatchQueue.main.async {
                         self.delegate?.wirelessHelperServer(self, didFail: error)
                     }
                 case .cancelled:
                     self.isRunning = false
                     print("WirelessHelperServer: stopped")
+                    DiagnosticsLog.shared.log("net", "wireless helper listener stopped")
                 default:
                     break
                 }
@@ -74,6 +77,7 @@ final class WirelessHelperServer {
             listener.start(queue: queue)
         } catch {
             isRunning = false
+            DiagnosticsLog.shared.log("error", "wireless helper listener could not start: \(DiagnosticsLog.describe(error))")
             DispatchQueue.main.async {
                 self.delegate?.wirelessHelperServer(self, didFail: error)
             }

@@ -168,6 +168,7 @@ class AapTransport {
     private func setupTls() {
         if tlsHandler.setup() {
             print("AapTransport: OpenSSL TLS handler initialized")
+            DiagnosticsLog.shared.log("aap", "OpenSSL TLS handler initialized")
 
             let bundle = Bundle.main
             let candidateCertPaths = [
@@ -189,6 +190,7 @@ class AapTransport {
 
             guard let certPath, let keyPath else {
                 print("AapTransport: Certificate resources not found in app bundle")
+                DiagnosticsLog.shared.log("aap", "TLS identity: cert/privkey not found in the app bundle")
                 return
             }
 
@@ -198,15 +200,18 @@ class AapTransport {
             if tlsHandler.loadCertificate(certPath: certPath, keyPath: keyPath) {
                 tlsIdentityReady = tlsHandler.hasClientIdentity()
                 print("AapTransport: Certificate loaded successfully, ready=\(tlsIdentityReady)")
+                DiagnosticsLog.shared.log("aap", "TLS identity loaded, client identity ready: \(tlsIdentityReady ? "yes" : "no")")
             } else {
                 tlsIdentityReady = false
                 print("AapTransport: Failed to load certificate")
+                DiagnosticsLog.shared.log("aap", "TLS identity: loading cert/privkey failed (\(certPath))")
             }
         }
     }
 
     func startHandshake() {
         print("AapTransport: Starting handshake")
+        DiagnosticsLog.shared.log("aap", "handshake starting (version timeout \(Int(versionHandshakeTimeout))s, up to \(maxVersionRequestAttempts) version requests)")
         bufferLock.lock()
         receiveBuffer.removeAll()
         encryptedReceiveBuffer.removeAll()
@@ -281,6 +286,7 @@ class AapTransport {
 
     private func setState(_ newState: AapTransportState) {
         print("AapTransport: State changed from \(state) to \(newState)")
+        DiagnosticsLog.shared.log("aap", "state \(state) -> \(newState)")
         state = newState
         if newState == .running {
             didReachRunning = true
@@ -324,6 +330,7 @@ class AapTransport {
         }
 
         print("AapTransport: VERSION_REQUEST attempt \(versionRequestAttempts)/\(maxVersionRequestAttempts)")
+        DiagnosticsLog.shared.log("aap", "VERSION_REQUEST attempt \(versionRequestAttempts)/\(maxVersionRequestAttempts)")
         sendVersionRequest()
 
         guard versionRequestAttempts < maxVersionRequestAttempts else {
@@ -963,6 +970,7 @@ class AapTransport {
             startHandshakeTimeout(for: .tlsHandshaking)
         } catch {
             print("AapTransport: Failed to start TLS handshake: \(error)")
+            DiagnosticsLog.shared.log("aap", "TLS handshake could not start: \(DiagnosticsLog.describe(error))")
             setState(.error("TLS handshake failed: \(error.localizedDescription)"))
             delegate?.aapTransportDidDisconnect(self)
         }
@@ -974,6 +982,7 @@ class AapTransport {
             processTlsHandshakeStep(step)
         } catch {
             print("AapTransport: TLS handshake step failed: \(error)")
+            DiagnosticsLog.shared.log("aap", "TLS handshake step failed: \(DiagnosticsLog.describe(error))")
             setState(.error("TLS handshake failed: \(error.localizedDescription)"))
             delegate?.aapTransportDidDisconnect(self)
         }
@@ -994,6 +1003,7 @@ class AapTransport {
 
         if step.isComplete {
             print("AapTransport: TLS handshake completed")
+            DiagnosticsLog.shared.log("aap", "TLS handshake completed")
             tlsHandler.postHandshakeReset()
             setState(.authenticating)
             sendStatusOk()
@@ -1196,6 +1206,7 @@ class AapTransport {
         switch message.type {
         case AapMessageType.VERSION_RESPONSE.rawValue:
             print("AapTransport: Version response received")
+            DiagnosticsLog.shared.log("aap", "version response received after \(versionRequestAttempts) request(s), payload \(message.payload.prefix(8).map { String(format: "%02x", $0) }.joined(separator: " "))")
             delayedVersionStartWorkItem?.cancel()
             delayedVersionStartWorkItem = nil
             versionRetryWorkItem?.cancel()
@@ -1211,6 +1222,7 @@ class AapTransport {
 
         case AapMessageType.AUTH_COMPLETE.rawValue:
             print("AapTransport: Auth complete received")
+            DiagnosticsLog.shared.log("aap", "auth complete received")
             if state == .authenticating {
                 setState(.authenticatingComplete)
                 setState(.binding)
@@ -1218,10 +1230,12 @@ class AapTransport {
 
         case AapMessageType.SERVICE_DISCOVERY_REQUEST.rawValue:
             print("AapTransport: Service discovery request received")
+            DiagnosticsLog.shared.log("aap", "service discovery request received")
             sendServiceDiscoveryResponse()
 
         case AapMessageType.CHANNEL_OPEN_REQUEST.rawValue:
             print("AapTransport: Channel open request received")
+            DiagnosticsLog.shared.log("aap", "channel open request on \(Channel.name(for: message.channel))")
             sendChannelOpenResponse(on: message.channel)
             if state == .authenticating {
                 setState(.authenticatingComplete)
@@ -1256,6 +1270,7 @@ class AapTransport {
             let reason = ProtoWire.extractFirstVarint(from: message.payload, fieldNumber: 1)
             gracefulDisconnectLock.lock()
             peerDisconnectDiagnostic = reason.map { "ByeBye reason \($0)" } ?? "ByeBye without reason"
+            DiagnosticsLog.shared.log("aap", "peer sent \(peerDisconnectDiagnostic)")
             gracefulDisconnectLock.unlock()
             sendByebyeResponse(on: message.channel)
 
@@ -1265,6 +1280,7 @@ class AapTransport {
 
         case AapMessageType.CHANNEL_OPEN_RESPONSE.rawValue:
             print("AapTransport: Channel open response received")
+            DiagnosticsLog.shared.log("aap", "channel open response received on \(Channel.name(for: message.channel))")
             setState(.running)
 
         default:
@@ -1318,6 +1334,7 @@ class AapTransport {
         )
         send(message: message)
         print("AapTransport: Sent service discovery response (\(payload.count) bytes)")
+        DiagnosticsLog.shared.log("aap", "service discovery response sent (\(payload.count) bytes)")
     }
 
     private func sendChannelOpenResponse(on channel: UInt8) {
@@ -1330,6 +1347,7 @@ class AapTransport {
         )
         send(message: message)
         print("AapTransport: Sent channel open response on channel \(Channel.name(for: channel))")
+        DiagnosticsLog.shared.log("aap", "channel open response sent on \(Channel.name(for: channel))")
 
         if channel == Channel.ID_SEN {
             sendDrivingStatusUnrestricted(on: channel)
@@ -1913,7 +1931,11 @@ private enum ProtoWire {
         videoDiagnosticsLock.lock()
         completedVideoFrameCount += 1
         lastCompletedVideoFrameBytes = frame.count
+        let isFirstFrame = completedVideoFrameCount == 1
         videoDiagnosticsLock.unlock()
+        if isFirstFrame {
+            DiagnosticsLog.shared.log("video", "first video frame delivered (\(frame.count) bytes)")
+        }
         delegate?.aapTransport(self, didReceiveVideoData: frame)
     }
 
@@ -2176,15 +2198,20 @@ private enum ProtoWire {
         }
 
         print("AapTransport: Recent AAP trace before disconnect (\(reason)):")
+        var traceLines = ["recent AAP trace before disconnect (\(reason)):"]
         for (idx, entry) in traceSnapshot.enumerated() {
-            print("  [\(idx + 1)] t=\(entry.timestampMs) \(entry.direction) ch=\(Channel.name(for: entry.channel))(\(entry.channel)) flags=0x\(String(format: "%02x", entry.flags)) type=\(entry.type) size=\(entry.payloadSize)")
+            let line = "[\(idx + 1)] t=\(entry.timestampMs) \(entry.direction) ch=\(Channel.name(for: entry.channel))(\(entry.channel)) flags=0x\(String(format: "%02x", entry.flags)) type=\(entry.type) size=\(entry.payloadSize)"
+            print("  " + line)
+            traceLines.append(line)
         }
+        DiagnosticsLog.shared.log("aap", traceLines.joined(separator: "\n"))
     }
 }
 
 extension AapTransport: ByteStreamConnectionDelegate {
     func byteStreamConnectionDidConnect(_ connection: ByteStreamConnection) {
         print("AapTransport: byte stream connected, starting handshake")
+        DiagnosticsLog.shared.log("aap", "byte stream connected")
         startHandshake()
     }
 
@@ -2198,10 +2225,12 @@ extension AapTransport: ByteStreamConnectionDelegate {
         cancelGracefulDisconnect()
         if let error {
             print("AapTransport: byte stream error: \(error)")
+            DiagnosticsLog.shared.log("error", "byte stream error: \(DiagnosticsLog.describe(error))")
             dumpRecentAapTrace(reason: "connection-error")
             setState(.error(error.localizedDescription))
         } else {
             print("AapTransport: byte stream disconnected")
+            DiagnosticsLog.shared.log("aap", "byte stream disconnected (no error)")
             dumpRecentAapTrace(reason: "connection-disconnect")
         }
         delayedVersionStartWorkItem?.cancel()

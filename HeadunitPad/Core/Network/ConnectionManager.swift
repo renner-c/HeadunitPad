@@ -85,6 +85,7 @@ class ConnectionManager {
     private var usbCleanupTask: Task<Void, Never>?
     private(set) var usbProbeState: USBProbeState = .idle {
         didSet {
+            logUSBProbeState(usbProbeState)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.delegate?.connectionManager(self, didChangeUSBProbeState: self.usbProbeState)
@@ -99,6 +100,7 @@ class ConnectionManager {
     private(set) var state: ConnectionState = .disconnected {
         didSet {
             print("ConnectionManager: state changed from \(oldValue.description) to \(state.description)")
+            DiagnosticsLog.shared.log("state", "\(oldValue.description) -> \(state.description)")
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.delegate?.connectionManager(self, didChangeState: self.state)
@@ -132,14 +134,19 @@ class ConnectionManager {
     }
 
     func startUSBProbe() {
-        guard usbProbeTask == nil, usbCleanupTask == nil else { return }
+        guard usbProbeTask == nil, usbCleanupTask == nil else {
+            DiagnosticsLog.shared.log("mode", "wired USB start ignored: a wired attempt or cleanup is already in progress")
+            return
+        }
         switch state {
         case .disconnected, .error:
             break
         default:
+            DiagnosticsLog.shared.log("mode", "wired USB start refused: current state is \(state.description)")
             usbProbeState = .failed("Disconnect the current session before connecting over USB.")
             return
         }
+        DiagnosticsLog.shared.log("mode", "wired USB start (AOA identity \(AOAIdentity.androidAuto.logSummary))")
 
         reconnectWorkItem?.cancel()
         reconnectWorkItem = nil
@@ -187,6 +194,7 @@ class ConnectionManager {
                 state = .disconnected
                 updateStatus("USB connection cancelled")
             } catch {
+                DiagnosticsLog.shared.log("error", "wired attempt failed: \(DiagnosticsLog.describe(error))")
                 usbProbeDiagnostics.record(error: error)
                 usbProbeTask = nil
                 usbProbeState = .failed(error.localizedDescription)
@@ -200,6 +208,7 @@ class ConnectionManager {
 
     func stopUSBProbe() {
         guard let usbProbeTask else { return }
+        DiagnosticsLog.shared.log("mode", "wired USB stop requested")
         usbProbeState = .running("Cancelling wired connection...")
         usbProbeTask.cancel()
     }
@@ -208,6 +217,7 @@ class ConnectionManager {
         print("ConnectionManager: startDiscovery called")
         guard usbProbeTask == nil else {
             print("ConnectionManager: Cannot start wireless discovery while a wired connection is in progress")
+            DiagnosticsLog.shared.log("mode", "wireless start ignored: a wired connection is in progress")
             return
         }
         reconnectWorkItem?.cancel()
@@ -225,8 +235,13 @@ class ConnectionManager {
 
         guard canStart else {
             print("ConnectionManager: Cannot start discovery, current state: \(state.description)")
+            DiagnosticsLog.shared.log("mode", "wireless start ignored: current state is \(state.description)")
             return
         }
+        DiagnosticsLog.shared.log(
+            "mode",
+            "wireless start (mode \(ProjectionSettings.connectionMode.title), auto reconnect \(ProjectionSettings.autoReconnect ? "on" : "off"), local IP \(localIPv4Address() ?? "unknown"))"
+        )
 
         discoveredDevices.removeAll()
         hasTriggeredWirelessHelper = false
@@ -250,6 +265,7 @@ class ConnectionManager {
 
     func stopDiscovery() {
         print("ConnectionManager: stopDiscovery called")
+        DiagnosticsLog.shared.log("mode", "wireless stop (state \(state.description))")
         reconnectWorkItem?.cancel()
         reconnectWorkItem = nil
         discovery.stopScan()
@@ -261,6 +277,7 @@ class ConnectionManager {
 
     func connect(to device: DiscoveredDevice) {
         print("ConnectionManager: connect(to:) called with device: \(device.displayName)")
+        DiagnosticsLog.shared.log("mode", "wireless connect to \(device.ip):\(device.port) (\(device.displayName))")
         reconnectWorkItem?.cancel()
         reconnectWorkItem = nil
         isUserInitiatedDisconnect = false
@@ -274,6 +291,7 @@ class ConnectionManager {
 
         if let preparedConnection = preparedConnection {
             print("ConnectionManager: Using prepared connection from discovery for \(device.ip):\(device.port)")
+            DiagnosticsLog.shared.log("net", "reusing the TCP connection the scan already opened to \(device.ip):\(device.port)")
             tcpHandler.adoptConnection(preparedConnection, host: device.ip, port: device.port)
         } else {
             print("ConnectionManager: Calling tcpHandler.connect(host: \(device.ip), port: \(device.port))")
@@ -289,6 +307,7 @@ class ConnectionManager {
 
     func disconnect() {
         print("ConnectionManager: disconnect called")
+        DiagnosticsLog.shared.log("mode", "user disconnect (state \(state.description))")
         guard usbCleanupTask == nil else { return }
         isUserInitiatedDisconnect = true
         reconnectWorkItem?.cancel()
@@ -364,15 +383,7 @@ class ConnectionManager {
         let liveVideoLines = usbProbeDiagnostics.aapVideoDiagnostics.isEmpty
             ? (aapTransport?.videoDiagnosticLines() ?? [])
             : []
-        let entitlements: String
-        switch USBHostEntitlements.current() {
-        case .present:
-            entitlements = "Present"
-        case .missing(let keys):
-            entitlements = "Missing (\(keys.joined(separator: ", ")))"
-        case .unknown(let reason):
-            entitlements = "Unknown (\(reason))"
-        }
+        let entitlements = USBHostEntitlements.current().summary
         let connectionLines = [
             "State: \(state.description)",
             "Status: \(statusDetail)",
@@ -405,8 +416,31 @@ class ConnectionManager {
             + (lastSessionTeardownLines.isEmpty ? [] : [""] + lastSessionTeardownLines)
     }
 
+    /// A finished wired attempt leaves the whole report in the log: it carries the
+    /// registry summary, libusb log and video counters a remote reader needs.
+    private func logUSBProbeState(_ probeState: USBProbeState) {
+        switch probeState {
+        case .failed(let message):
+            DiagnosticsLog.shared.log("usb", "wired attempt failed: \(message)")
+            DiagnosticsLog.shared.log("report", diagnosticLines().joined(separator: "\n"))
+        case .succeeded:
+            DiagnosticsLog.shared.log("usb", "wired attempt succeeded")
+            DiagnosticsLog.shared.log("report", diagnosticLines().joined(separator: "\n"))
+        case .cancelled:
+            DiagnosticsLog.shared.log("usb", "wired attempt cancelled")
+        case .idle, .running:
+            break
+        }
+    }
+
     private func handleUSBProbeStage(_ stage: AOAModeSwitchStage) {
         usbProbeDiagnostics.record(stage)
+        switch stage {
+        case .registrySummary, .libusbLog:
+            DiagnosticsLog.shared.log("usb", stage.logDetail)
+        default:
+            DiagnosticsLog.shared.log("usb", "\(usbProbeDiagnostics.status) | \(stage.logDetail)")
+        }
         if case .libusbLog = stage {
             return
         }
@@ -434,6 +468,7 @@ class ConnectionManager {
     private func updateStatus(_ status: String) {
         statusDetail = status
         print("ConnectionManager: status = \(status)")
+        DiagnosticsLog.shared.log("status", status)
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.delegate?.connectionManager(self, didUpdateStatus: status)
@@ -503,6 +538,7 @@ class ConnectionManager {
 
 extension ConnectionManager: DiscoveryDelegate {
     func discoveryDidFindDevice(_ device: DiscoveredDevice) {
+        DiagnosticsLog.shared.log("net", "discovery found \(device.ip):\(device.port)")
         if device.port == Discovery.launcherPort {
             print("ConnectionManager: triggered wireless helper launcher at \(device.ip):\(device.port)")
             hasTriggeredWirelessHelper = true
@@ -518,6 +554,7 @@ extension ConnectionManager: DiscoveryDelegate {
 
     func discoveryDidFinish() {
         print("ConnectionManager: discovery finished, found \(discoveredDevices.count) devices")
+        DiagnosticsLog.shared.log("net", "discovery finished: \(discoveredDevices.count) headunit server(s), helper triggered \(hasTriggeredWirelessHelper ? "yes" : "no")")
         if state == .discovering {
             if !discoveredDevices.isEmpty {
                 state = .disconnected
@@ -543,6 +580,7 @@ extension ConnectionManager: DiscoveryDelegate {
 
     func discoveryDidFail(_ error: Error) {
         print("ConnectionManager: discovery failed with error: \(error.localizedDescription)")
+        DiagnosticsLog.shared.log("error", "discovery failed: \(DiagnosticsLog.describe(error))")
         state = .error(error.localizedDescription)
         updateStatus(error.localizedDescription)
         scheduleReconnectIfNeeded(reason: "Discovery failed")
@@ -629,6 +667,7 @@ extension ConnectionManager: AapTransportDelegate {
                 updateStatus("Android Auto is running over wireless")
             }
         case .error(let msg):
+            DiagnosticsLog.shared.log("error", "AAP transport error: \(msg)")
             NowPlayingCoordinator.shared.deactivate()
             microphoneCapture.stop()
             locationCapture.stop()
@@ -661,9 +700,12 @@ extension ConnectionManager: AapTransportDelegate {
     func aapTransportDidDisconnect(_ transport: AapTransport) {
         guard transport === aapTransport else { return }
         let wasUSB = usbAccessoryConnection != nil
+        DiagnosticsLog.shared.log("aap", "transport disconnected (\(wasUSB ? "USB" : "network"), reached running: \(transport.didReachRunning ? "yes" : "no"), user initiated: \(isUserInitiatedDisconnect ? "yes" : "no"))")
         if transport.didReachRunning {
             lastSessionTeardownLines = transport.teardownDiagnosticLines()
+            DiagnosticsLog.shared.log("aap", lastSessionTeardownLines.joined(separator: "\n"))
         }
+        DiagnosticsLog.shared.log("video", transport.videoDiagnosticLines().joined(separator: "\n"))
         if let usbAccessoryConnection {
             usbProbeDiagnostics.recordAAPVideoDiagnostics(transport.videoDiagnosticLines())
             usbProbeDiagnostics.recordStaleDrain(
@@ -753,6 +795,7 @@ extension ConnectionManager: WirelessHelperServerDelegate {
             canAccept = false
         }
 
+        DiagnosticsLog.shared.log("net", "wireless helper connection from \(remoteHost ?? "unknown") (\(canAccept ? "accepted" : "dropped") in state \(state.description))")
         guard canAccept else {
             print("ConnectionManager: dropping inbound wireless helper connection while state=\(state.description)")
             connection.cancel()
@@ -772,6 +815,7 @@ extension ConnectionManager: WirelessHelperServerDelegate {
 
     func wirelessHelperServer(_ server: WirelessHelperServer, didFail error: Error) {
         print("ConnectionManager: wireless helper server failed with error: \(error.localizedDescription)")
+        DiagnosticsLog.shared.log("error", "wireless helper listener failed: \(DiagnosticsLog.describe(error))")
         if state == .discovering {
             state = .error(error.localizedDescription)
             updateStatus(error.localizedDescription)

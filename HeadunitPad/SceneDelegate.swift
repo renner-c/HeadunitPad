@@ -44,8 +44,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
+        DiagnosticsLog.shared.log("app", "scene will enter foreground")
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
+        DiagnosticsLog.shared.log("app", "scene entered background")
     }
 }
