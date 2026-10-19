@@ -7,42 +7,15 @@ DERIVED_DATA="$ROOT_DIR/.build/TrollStoreDerivedData"
 APP_NAME="HeadunitPad"
 ENTITLEMENTS="$ROOT_DIR/HeadunitPad/HeadunitPad.entitlements"
 
+# shellcheck source=lib/entitlements.sh
+source "$ROOT_DIR/scripts/lib/entitlements.sh"
+
 for tool in xcodebuild ldid zip unzip; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "error: required tool not found: $tool" >&2
     exit 1
   fi
 done
-
-verify_entitlements() {
-  local plist="$1"
-  local device_access
-  local device_client
-  local interface_client
-  local iokit_properties
-
-  device_access="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.vm.device-access' "$plist")"
-  device_client="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.exception.iokit-user-client-class:0' "$plist")"
-  interface_client="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.exception.iokit-user-client-class:1' "$plist")"
-  iokit_properties="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.system.diagnostics.iokit-properties' "$plist")"
-
-  if [[ "$device_access" != "true" ]]; then
-    echo "error: com.apple.vm.device-access is missing or not true" >&2
-    exit 1
-  fi
-  if [[ "$device_client" != "AppleUSBHostDeviceUserClient" ]]; then
-    echo "error: AppleUSBHostDeviceUserClient entitlement is missing" >&2
-    exit 1
-  fi
-  if [[ "$interface_client" != "AppleUSBHostInterfaceUserClient" ]]; then
-    echo "error: AppleUSBHostInterfaceUserClient entitlement is missing" >&2
-    exit 1
-  fi
-  if [[ "$iokit_properties" != "true" ]]; then
-    echo "error: com.apple.system.diagnostics.iokit-properties is missing or not true" >&2
-    exit 1
-  fi
-}
 
 if [[ ! -f "$ENTITLEMENTS" ]]; then
   echo "error: entitlements file not found: $ENTITLEMENTS" >&2
