@@ -199,7 +199,7 @@
 			mainGroup = 62EB889A2F935A6900D2526F;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				D4C8A6E0F1B2435C9A7D8E11 /* XCRemoteSwiftPackageReference "TrollUSBHostKit" */,
+				D4C8A6E0F1B2435C9A7D8E11 /* XCLocalSwiftPackageReference "Vendor/TrollUSBHostKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 62EB88A42F935A6900D2526F /* Products */;
@@ -307,7 +307,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5NMV3622HL;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.3;
 				PRODUCT_BUNDLE_IDENTIFIER = andyching168.HeadunitPadTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -321,7 +321,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5NMV3622HL;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.3;
 				PRODUCT_BUNDLE_IDENTIFIER = andyching168.HeadunitPadTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -344,7 +344,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.3;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -381,7 +381,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.3;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -456,7 +456,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.3;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -514,7 +514,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.3;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -556,21 +556,17 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		D4C8A6E0F1B2435C9A7D8E11 /* XCRemoteSwiftPackageReference "TrollUSBHostKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/andyching168/TrollUSBHostKit.git";
-			requirement = {
-				kind = exactVersion;
-				version = 0.1.3;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		D4C8A6E0F1B2435C9A7D8E11 /* XCLocalSwiftPackageReference "Vendor/TrollUSBHostKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Vendor/TrollUSBHostKit;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		D4C8A6E0F1B2435C9A7D8E12 /* USBHostKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = D4C8A6E0F1B2435C9A7D8E11 /* XCRemoteSwiftPackageReference "TrollUSBHostKit" */;
+			package = D4C8A6E0F1B2435C9A7D8E11 /* XCLocalSwiftPackageReference "Vendor/TrollUSBHostKit" */;
 			productName = USBHostKit;
 		};
 /* End XCSwiftPackageProductDependency section */
