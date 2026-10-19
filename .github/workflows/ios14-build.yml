@@ -127,6 +127,12 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/test.log" | grep -E ': (error|warning):|Test (Suite|Case) .*(passed|failed)|Executed [0-9]+ tests|TEST (SUCCEEDED|FAILED)|BUILD FAILED' || true
           grep -q 'TEST SUCCEEDED' "$RUNNER_TEMP/test.log"
 
+      - name: Test results
+        if: always()
+        run: |
+          xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/tests.xcresult" | tee "$RUNNER_TEMP/test-summary.json" | grep -E '"(passedTests|failedTests|skippedTests|totalTestCount|result)"' || true
+          xcrun xcresulttool get test-results tests --path "$RUNNER_TEMP/tests.xcresult" | grep -E '"name" : "test' | sort -u | wc -l | xargs echo "distinct test methods:"
+
       - name: Test summary
         if: always()
         run: |
