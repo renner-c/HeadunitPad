@@ -616,7 +616,9 @@ char *uhs_usb_registry_summary(void) {
             continue;
         }
         io_iterator_t iter = 0;
-        kern_return_t kr = IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iter);
+        // MACH_PORT_NULL means "default main port"; kIOMainPortDefault is iOS 15+
+        // and would be a weak NULL symbol (crash on read) on iOS 14.
+        kern_return_t kr = IOServiceGetMatchingServices(MACH_PORT_NULL, matching, &iter);
         if (kr != KERN_SUCCESS) {
             CFStringAppendFormat(out, NULL, CFSTR("%s: lookup failed (%d)\n"), class_names[i], kr);
             continue;
