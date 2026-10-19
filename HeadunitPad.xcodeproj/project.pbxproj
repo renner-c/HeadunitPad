@@ -17,6 +17,7 @@
 		C6B000000000000000000002 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B000000000000000000004 /* Channel.swift */; };
 		D7B000000000000000000001 /* H264NALParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B000000000000000000002 /* H264NALParser.swift */; };
 		E8B000000000000000000001 /* USBHostEntitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B000000000000000000002 /* USBHostEntitlements.swift */; };
+		AAB000000000000000000001 /* DiagnosticsLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB000000000000000000002 /* DiagnosticsLog.swift */; };
 		F9B000000000000000000001 /* HeadunitButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B000000000000000000002 /* HeadunitButton.swift */; };
 		D4C8A6E0F1B2435C9A7D8E10 /* USBHostKit in Frameworks */ = {isa = PBXBuildFile; productRef = D4C8A6E0F1B2435C9A7D8E12 /* USBHostKit */; };
 /* End PBXBuildFile section */
@@ -32,6 +33,7 @@
 		C6B000000000000000000004 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/AAP/Protocol/Channel.swift; sourceTree = SOURCE_ROOT; };
 		D7B000000000000000000002 /* H264NALParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/Video/H264NALParser.swift; sourceTree = SOURCE_ROOT; };
 		E8B000000000000000000002 /* USBHostEntitlements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/USB/USBHostEntitlements.swift; sourceTree = SOURCE_ROOT; };
+		AAB000000000000000000002 /* DiagnosticsLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/Diagnostics/DiagnosticsLog.swift; sourceTree = SOURCE_ROOT; };
 		F9B000000000000000000002 /* HeadunitButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/UI/HeadunitButton.swift; sourceTree = SOURCE_ROOT; };
 		A4C8F5B6582F6D160A3B1E70 /* Pods-HeadunitPad.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HeadunitPad.release.xcconfig"; path = "Target Support Files/Pods-HeadunitPad/Pods-HeadunitPad.release.xcconfig"; sourceTree = "<group>"; };
 		BFD3A5C41BAB9748091B8410 /* Pods_HeadunitPad.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_HeadunitPad.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -298,6 +300,7 @@
 				D7B000000000000000000001 /* H264NALParser.swift in Sources */,
 				E8B000000000000000000001 /* USBHostEntitlements.swift in Sources */,
 				F9B000000000000000000001 /* HeadunitButton.swift in Sources */,
+				AAB000000000000000000001 /* DiagnosticsLog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

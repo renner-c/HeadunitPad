@@ -2,6 +2,18 @@ import XCTest
 import Foundation
 
 final class USBHostEntitlementsTests: XCTestCase {
+    func testSummaryNamesEachAvailability() {
+        XCTAssertEqual(USBHostEntitlements.Availability.present.summary, "Present")
+        XCTAssertEqual(
+            USBHostEntitlements.Availability.missing(["a", "b"]).summary,
+            "Missing (a, b)"
+        )
+        XCTAssertEqual(
+            USBHostEntitlements.Availability.unknown("no signature").summary,
+            "Unknown (no signature)"
+        )
+    }
+
     func testPlistWithEveryRequiredKeyIsPresent() {
         let plist = makePlist([
             "com.apple.vm.device-access": true,

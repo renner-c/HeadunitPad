@@ -22,6 +22,18 @@ nonisolated enum USBHostEntitlements {
         case missing([String])
         /// Could not be determined. Never block the wired path on this.
         case unknown(String)
+
+        /// One line for the diagnostics report and the launch log header.
+        var summary: String {
+            switch self {
+            case .present:
+                return "Present"
+            case .missing(let keys):
+                return "Missing (\(keys.joined(separator: ", ")))"
+            case .unknown(let reason):
+                return "Unknown (\(reason))"
+            }
+        }
     }
 
     static let requiredKeys = [
