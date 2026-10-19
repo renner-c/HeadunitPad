@@ -24,6 +24,9 @@ let package = Package(
             cSettings: [
                 .headerSearchPath("libusb"),
                 .headerSearchPath("ios-headers", .when(platforms: [.iOS])),
+                // iOS 14 port: fail on unguarded use of newer-than-deployment APIs,
+                // which C would otherwise weak-link to NULL and crash on 14.x.
+                .unsafeFlags(["-Werror=unguarded-availability-new"]),
             ],
             linkerSettings: [
                 .linkedFramework("CoreFoundation"),
@@ -34,7 +37,10 @@ let package = Package(
         // Small C shim giving the Swift layer a stable, opaque surface.
         .target(
             name: "CUSBShim",
-            dependencies: ["CLibusb"]
+            dependencies: ["CLibusb"],
+            cSettings: [
+                .unsafeFlags(["-Werror=unguarded-availability-new"]),
+            ]
         ),
         .target(
             name: "USBHostKit",
