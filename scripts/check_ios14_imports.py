@@ -509,6 +509,10 @@ def evaluate_binary(
                 Finding("weak-symbol" if imp.weak else "symbol", name, lib=None, symbol=imp.symbol)
             )
             continue
+        if imp.lib == WEAK_DEF_COALESCE:
+            # Weak definitions (C++ operator new/delete, ...) are coalesced across every loaded
+            # image at run time; they are not bound to one library, so there is no one to check.
+            continue
         target = by_leaf.get(imp.lib)
         if target is None:
             (rep.notes if imp.weak else rep.errors).append(
@@ -552,6 +556,21 @@ def expand_rpath_candidates(
 
 
 # --------------------------------------------------------------------------- real tools + bundle walk
+
+
+WEAK_DEF_COALESCE = "<weak-def-coalesce>"
+
+
+def system_rpath_install_names(rpaths: Iterable[str], rest: str) -> List[str]:
+    """Absolute system install names an `@rpath/<rest>` load can resolve to through LC_RPATH
+    entries such as /usr/lib/swift (how Swift back-deployment dylibs find libswiftCore)."""
+    out: List[str] = []
+    for rp in rpaths:
+        if rp.startswith(("/usr/lib", "/System/Library")):
+            name = rp.rstrip("/") + "/" + rest
+            if name not in out:
+                out.append(name)
+    return out
 
 
 class ToolError(RuntimeError):
@@ -694,6 +713,17 @@ class BundleChecker:
             for cand in self._bundle_candidates(p, binary):
                 if os.path.isfile(cand) and macho_kind(cand):
                     return LibResolution("found", self.embedded_exports(cand, _seen))
+            if p.startswith("@rpath/"):
+                # dyld searches the whole loading chain's rpaths, and the main executable's
+                # include /usr/lib/swift, which is where the OS-provided libswift*.dylib live.
+                rpaths = list(self.info(binary).rpaths)
+                main_exe = os.path.join(self.app_dir, os.path.basename(self.app_dir)[: -len(".app")])
+                if os.path.isfile(main_exe) and macho_kind(main_exe):
+                    rpaths += self.info(main_exe).rpaths
+                for name in system_rpath_install_names(rpaths, p[len("@rpath/"):]):
+                    syms = self.sdk.exports(name)
+                    if syms is not None:
+                        return LibResolution("found", syms)
             return LibResolution("missing")
         return LibResolution("external")  # e.g. /Library/Frameworks/CydiaSubstrate...
 

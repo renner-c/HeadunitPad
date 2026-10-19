@@ -3,6 +3,7 @@ name: iPadOS 14 build matrix
 on:
   push:
     branches: [ios14, 'ios14-*']
+    tags: ['ios14-v*']
   workflow_dispatch:
 
 permissions:
@@ -85,6 +86,21 @@ jobs:
             "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/HeadunitPad.app" \
             "$RUNNER_TEMP/sdk/iPhoneOS14.3.sdk" --verbose 2>&1 | tee "$RUNNER_TEMP/imports-report.txt"
 
+      - name: Package TrollStore .ipa and jailbreak .deb
+        if: success() && matrix.xcode == '26.6'
+        run: |
+          set -o pipefail
+          brew install ldid dpkg
+          scripts/package_ios14.sh \
+            "$RUNNER_TEMP/dd/Build/Products/Release-iphoneos/HeadunitPad.app" \
+            "$RUNNER_TEMP/out" 2>&1 | tee "$RUNNER_TEMP/package.log"
+          {
+            echo "## Packages"
+            echo '```'
+            ls -la "$RUNNER_TEMP/out"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
@@ -99,6 +115,16 @@ jobs:
         with:
           name: app-xcode-${{ matrix.xcode }}
           path: ${{ runner.temp }}/HeadunitPad-app.zip
+
+      - name: Upload packages
+        if: success() && matrix.xcode == '26.6'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HeadunitPad-iOS14-packages
+          path: |
+            ${{ runner.temp }}/out/*.ipa
+            ${{ runner.temp }}/out/*.deb
+          if-no-files-found: error
 
   test:
     name: Unit tests (Xcode 26.6 on macos-26)
@@ -159,3 +185,31 @@ jobs:
           name: test-log-xcode-26.6
           path: ${{ runner.temp }}/test.log
           if-no-files-found: ignore
+
+  release:
+    name: Prerelease
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/ios14-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: HeadunitPad-iOS14-packages
+          path: packages
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ls -la packages
+          gh release create "$TAG" --prerelease \
+            --title "HeadunitPad for iPadOS 14 ($TAG)" \
+            --notes-file docs/INSTALL-iOS14.md \
+            packages/*.ipa packages/*.deb

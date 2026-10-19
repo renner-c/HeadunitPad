@@ -556,6 +556,21 @@ class VerdictTests(unittest.TestCase):
         rep = c.evaluate_binary("A", info, [c.Import("_b", None, False), c.Import("_zzz", None, False)], res)
         self.assertEqual([e.symbol for e in rep.errors], ["_zzz"])
 
+    def test_weak_def_coalesce_import_is_not_an_error(self):
+        info = self.info(libs=[lib("/usr/lib/libc++.1.dylib")])
+        res = make_resolver({"/usr/lib/libc++.1.dylib": c.LibResolution("found", frozenset({"_x"}))})
+        imports = [c.Import("__Znwm", "<weak-def-coalesce>", False), c.Import("__ZdlPv", "<weak-def-coalesce>", False)]
+        rep = c.evaluate_binary("A", info, imports, res)
+        self.assertTrue(rep.ok)
+
+    def test_system_rpath_install_names(self):
+        self.assertEqual(
+            c.system_rpath_install_names(
+                ["@executable_path/Frameworks", "/usr/lib/swift", "/Library/Foo"], "libswiftCore.dylib"
+            ),
+            ["/usr/lib/swift/libswiftCore.dylib"],
+        )
+
     def test_import_from_unlinked_library_is_error(self):
         rep = c.evaluate_binary("A", self.info(), [c.Import("_x", "Mystery", False)], make_resolver({}))
         self.assertFalse(rep.ok)
