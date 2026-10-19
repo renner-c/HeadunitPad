@@ -11,5 +11,7 @@
 	</array>
 	<key>com.apple.system.diagnostics.iokit-properties</key>
 	<true/>
+	<key>com.apple.private.iokit.IOServiceSetAuthorizationID</key>
+	<true/>
 </dict>
 </plist>
