@@ -192,9 +192,27 @@ jobs:
           path: ${{ runner.temp }}/test.log
           if-no-files-found: ignore
 
+  scripts:
+    name: Script tests (checker, SF Symbols, packager)
+    runs-on: macos-26
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install packaging tools
+        run: brew install ldid dpkg
+
+      - name: Python unit tests
+        run: python3 -m unittest discover -s scripts/tests -v
+
+      - name: Packager test
+        run: bash scripts/tests/test_package_ios14.sh
+
   release:
     name: Prerelease
-    needs: [build, test]
+    needs: [build, test, scripts]
     if: startsWith(github.ref, 'refs/tags/ios14-v')
     runs-on: ubuntu-latest
     permissions:
