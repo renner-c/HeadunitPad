@@ -14,6 +14,7 @@
 		B5B000000000000000000002 /* TcpHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5B000000000000000000004 /* TcpHandler.swift */; };
 		B5B000000000000000000005 /* USBAccessoryConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5B000000000000000000006 /* USBAccessoryConnection.swift */; };
 		C6B000000000000000000001 /* AapMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B000000000000000000003 /* AapMessage.swift */; };
+		AABB00000000000000000001 /* InterfaceOrientationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB00000000000000000002 /* InterfaceOrientationPolicy.swift */; };
 		C6B000000000000000000002 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B000000000000000000004 /* Channel.swift */; };
 		D7B000000000000000000001 /* H264NALParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B000000000000000000002 /* H264NALParser.swift */; };
 		E8B000000000000000000001 /* USBHostEntitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B000000000000000000002 /* USBHostEntitlements.swift */; };
@@ -29,6 +30,7 @@
 		B5B000000000000000000003 /* ByteStreamConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/Network/ByteStreamConnection.swift; sourceTree = SOURCE_ROOT; };
 		B5B000000000000000000004 /* TcpHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/Network/TcpHandler.swift; sourceTree = SOURCE_ROOT; };
 		B5B000000000000000000006 /* USBAccessoryConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/USB/USBAccessoryConnection.swift; sourceTree = SOURCE_ROOT; };
+		AABB00000000000000000002 /* InterfaceOrientationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/UI/InterfaceOrientationPolicy.swift; sourceTree = SOURCE_ROOT; };
 		C6B000000000000000000003 /* AapMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/AAP/AapMessage.swift; sourceTree = SOURCE_ROOT; };
 		C6B000000000000000000004 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/AAP/Protocol/Channel.swift; sourceTree = SOURCE_ROOT; };
 		D7B000000000000000000002 /* H264NALParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadunitPad/Core/Video/H264NALParser.swift; sourceTree = SOURCE_ROOT; };
@@ -297,6 +299,7 @@
 				B5B000000000000000000005 /* USBAccessoryConnection.swift in Sources */,
 				C6B000000000000000000001 /* AapMessage.swift in Sources */,
 				C6B000000000000000000002 /* Channel.swift in Sources */,
+				AABB00000000000000000001 /* InterfaceOrientationPolicy.swift in Sources */,
 				D7B000000000000000000001 /* H264NALParser.swift in Sources */,
 				E8B000000000000000000001 /* USBHostEntitlements.swift in Sources */,
 				F9B000000000000000000001 /* HeadunitButton.swift in Sources */,

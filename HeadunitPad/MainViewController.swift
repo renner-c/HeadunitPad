@@ -101,7 +101,7 @@ class MainViewController: UIViewController {
     }()
 
     private lazy var usbProbeButton: UIButton = {
-        let button = HeadunitButton(style: .tinted, title: Self.wiredConnectTitle, systemImageName: "cable.connector")
+        let button = HeadunitButton(style: .tinted, title: Self.wiredConnectTitle, systemImageNames: ["cable.connector", "bolt.horizontal"])
         button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(usbProbeButtonTapped), for: .touchUpInside)
         return button
@@ -144,7 +144,10 @@ class MainViewController: UIViewController {
     }
 
     override var shouldAutorotate: Bool {
-        return false
+        if #available(iOS 16.0, *) { return false }
+        // Before iOS 16 the supportedInterfaceOrientations mask does the locking, and rotation
+        // (including the forced one in applyOrientationLock) only happens while this is true.
+        return true
     }
 
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
@@ -177,8 +180,18 @@ class MainViewController: UIViewController {
                 print("MainViewController: Failed to apply orientation lock: \(error)")
             }
         } else {
-            let orientation: UIInterfaceOrientation = ProjectionSettings.orientation == .portrait ? .portrait : .landscapeRight
-            UIDevice.current.setValue(orientation.rawValue, forKey: "orientation")
+            // Best effort: before iOS 16, iPadOS ignores the orientation mask for apps that support
+            // multitasking (UIRequiresFullScreen = NO), so this may do nothing. Only nudge when the
+            // current orientation is outside the mask, so landscape-left is never flipped 180 degrees.
+            let current = view.window?.windowScene?.interfaceOrientation
+            guard let target = InterfaceOrientationPolicy.orientationToForce(
+                current: current,
+                device: UIDevice.current.orientation,
+                allowed: targetMask,
+                fallback: preferredInterfaceOrientationForPresentation
+            ) else { return }
+            // KVC "orientation" is fed the interface orientation's raw value (the usual "rotate to this" idiom).
+            UIDevice.current.setValue(target.rawValue, forKey: "orientation")
             UIViewController.attemptRotationToDeviceOrientation()
         }
     }
@@ -246,8 +259,8 @@ class MainViewController: UIViewController {
         videoContainerView.isHidden = true
     }
 
-    /// Wide enough that the Wired and Wireless labels stay on one line.
-    private let connectControlWidth: CGFloat = 300
+    /// Wide enough that the Wired and Wireless labels stay on one line (HeadunitButton shrinks longer titles).
+    private let connectControlWidth: CGFloat = 340
 
     private func setupConstraints() {
         NSLayoutConstraint.activate([

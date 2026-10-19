@@ -41,6 +41,12 @@ jobs:
       - name: Install CocoaPods dependencies
         run: pod install
 
+      - name: Check SF Symbols exist on iOS 14.3
+        if: matrix.xcode == '26.6'
+        run: |
+          python3 -m unittest discover -s scripts/tests -p 'test_check_sf_symbols.py'
+          python3 scripts/check_sf_symbols.py
+
       - name: Build unsigned Release for iPadOS 14.3
         run: |
           set -o pipefail
