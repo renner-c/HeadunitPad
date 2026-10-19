@@ -1,3 +1,47 @@
+## iPadOS 14 port (this fork)
+
+This fork runs HeadunitPad on a jailbroken iPadOS 14.3 iPad. The target device is an iPad Pro 12.9" (3rd gen, A12X) with the Taurine jailbreak and TrollStore. Upstream requires iOS 16.6, so it cannot be installed on that iPad.
+
+**Status.** The app builds and passes all CI checks. It has not been run on a real iOS 14.3 device yet. Wired USB on 14.3 is unproven; the main evidence it can work is that UTM's USB passthrough on jailbroken iOS 14 used the same IOKit user clients.
+
+**Downloads.** Get the latest prerelease (tags `ios14-v*`) from this fork's Releases page:
+- `HeadunitPad-iOS14-TrollStore.ipa` for TrollStore.
+- `headunitpad-ios14_<ver>_iphoneos-arm.deb` for a rootful jailbreak. It installs as "Headunit JB" with bundle id suffix `.jb`, so it can sit next to the TrollStore copy.
+
+See [docs/INSTALL-iOS14.md](docs/INSTALL-iOS14.md) to install and [docs/TESTING-iOS14.md](docs/TESTING-iOS14.md) for the test checklist.
+
+### Car setup, wireless (try this first)
+1. Turn on the phone's hotspot and join it from the iPad.
+2. On the phone: Android Auto settings, tap "Version" 10 times to unlock developer settings, overflow menu, "Start head unit server".
+3. In HeadunitPad tap "Wireless: Scan for Devices", or "Wireless: Enter IP Manually" with the phone's hotspot gateway IP.
+4. Allow the Local Network prompt (Settings, Privacy, Local Network).
+
+The app connects to the phone on TCP 5277. Android Auto 17.4+ removed the old "Wireless Helper" trigger path, so use the head unit server. Car-style wireless Android Auto (Bluetooth plus Wi-Fi handoff) is not possible on an iPad.
+
+### Car setup, wired
+Connect a USB-C data cable between phone and iPad. The iPad acts as USB host and powers the phone, so expect battery drain; a USB-C PD hub may help (untested). Wired needs the USB entitlements, so use the TrollStore IPA or the .deb.
+
+### What changed vs upstream
+- Deployment target is 14.3.
+- Built with Xcode 26; the Swift 5.5 concurrency back-deploy library is embedded.
+- `UIButton.Configuration` replaced by `HeadunitButton`.
+- iOS 16 orientation and NowPlaying APIs are guarded, with iOS 14 fallbacks.
+- SF Symbol fallback for an icon that exists only on iOS 15+.
+- TrollUSBHostKit vendored with an iOS 14 floor and a NULL-deref fix (`kIOMainPortDefault`).
+- Extra entitlement `com.apple.private.iokit.IOServiceSetAuthorizationID`.
+- Persistent diagnostics log (`HeadunitPad-diagnostics.log`).
+- CI: iOS 14.3 dyld import checker against iPhoneOS14.3.sdk stubs, SF Symbols availability check, unit tests, IPA and rootful .deb packaging, tag-triggered prerelease.
+
+### Known limitations
+- The orientation lock may be ignored on iPadOS < 16 because the app supports multitasking. Use the Control Center rotation lock in the car.
+- Everything under Status: untested on real hardware, wired USB unproven.
+
+---
+
+*Upstream README follows.*
+
+---
+
 # HeadunitPad
 
 **Transform your iPad into an Android Auto display screen.**
